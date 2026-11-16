@@ -1,0 +1,18 @@
+# Sekrety i dane serwera - nigdy nie commitować
+.env
+.env.*
+*.bak
+*.bak-*
+log/
+backups/
+*-check-before.txt
+*-check-after.txt
+check-before.txt
+check-after.txt
+build.log
+
+# Systemowe
+.DS_Store
+*.swp
+*.swo
+*~

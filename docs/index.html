@@ -1,0 +1,704 @@
+<!doctype html>
+<html lang="pl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Nod na własnym VPS · poradnik po odcinku</title>
+<meta name="description" content="Jedna wklejka do Claude Code i agent stawia Noda, open-source'owego agenta AI od n8n, na Twoim VPS: widoczny tylko z Twoich urządzeń przez Tailscale, z przypiętą przetestowaną wersją, backupem i audytem.">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🤖</text></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,300..800&family=Instrument+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#1A192C;
+    --bg-2:#211F38;
+    --bg-3:#141322;
+    --ink:#EDEAF6;
+    --ink-dim:#A9A4C2;
+    --line:#312E4C;
+    --orange:#F39F06;
+    --orange-soft:rgba(243,159,6,.12);
+    --green:#4ADE80;
+    --red:#F87171;
+    --yellow:#FACC15;
+    --mono:'JetBrains Mono',ui-monospace,SFMono-Regular,Menlo,monospace;
+    --disp:'Bricolage Grotesque','Instrument Sans',sans-serif;
+    --body:'Instrument Sans',system-ui,sans-serif;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html{scroll-behavior:smooth}
+  body{
+    background:var(--bg);color:var(--ink);font-family:var(--body);
+    font-size:17px;line-height:1.65;-webkit-font-smoothing:antialiased;
+    background-image:
+      radial-gradient(1200px 500px at 80% -10%, rgba(243,159,6,.07), transparent 60%),
+      radial-gradient(900px 500px at -10% 30%, rgba(122,90,248,.08), transparent 55%);
+  }
+  ::selection{background:var(--orange);color:var(--bg)}
+  .wrap{max-width:860px;margin:0 auto;padding:0 24px}
+  a{color:var(--orange);text-decoration:none;border-bottom:1px solid rgba(243,159,6,.35)}
+  a:hover{border-bottom-color:var(--orange)}
+  code.inline{font-family:var(--mono);font-size:13.5px;color:var(--orange);
+    background:rgba(243,159,6,.08);padding:2px 7px;border-radius:6px}
+
+  /* HERO */
+  header{padding:72px 0 40px;border-bottom:1px solid var(--line)}
+  .kicker{
+    font-family:var(--mono);font-size:12px;letter-spacing:.22em;text-transform:uppercase;
+    color:var(--orange);display:flex;align-items:center;gap:12px;margin-bottom:22px;
+  }
+  .kicker::before{content:"";display:inline-block;width:34px;height:2px;background:var(--orange)}
+  h1{
+    font-family:var(--disp);font-weight:750;font-size:clamp(34px,6vw,58px);
+    line-height:1.04;letter-spacing:-.02em;margin-bottom:20px;
+  }
+  h1 em{font-style:normal;color:var(--orange)}
+  .lede{font-size:clamp(17px,2.2vw,20px);color:var(--ink-dim);max-width:640px}
+  .lede strong{color:var(--ink);font-weight:600}
+  .hero-meta{
+    display:flex;flex-wrap:wrap;gap:10px;margin-top:28px;font-family:var(--mono);font-size:12.5px;
+  }
+  .chip{
+    border:1px solid var(--line);border-radius:999px;padding:6px 14px;color:var(--ink-dim);
+    background:rgba(255,255,255,.02)
+  }
+  .chip b{color:var(--green);font-weight:600}
+
+  /* SECTIONS */
+  section{padding:56px 0;border-bottom:1px solid var(--line)}
+  .step-tag{
+    font-family:var(--mono);font-size:13px;color:var(--orange);letter-spacing:.14em;margin-bottom:10px;
+  }
+  h2{
+    font-family:var(--disp);font-weight:700;font-size:clamp(24px,3.6vw,34px);
+    letter-spacing:-.015em;line-height:1.15;margin-bottom:16px;
+  }
+  h3{font-family:var(--disp);font-weight:650;font-size:19px;margin:26px 0 8px}
+  p{margin-bottom:14px;color:var(--ink-dim)}
+  p strong,li strong{color:var(--ink);font-weight:600}
+  ul.plain{list-style:none;margin:18px 0}
+  ul.plain li{
+    padding:10px 0 10px 30px;position:relative;color:var(--ink-dim);border-top:1px dashed var(--line)
+  }
+  ul.plain li:last-child{border-bottom:1px dashed var(--line)}
+  ul.plain li::before{content:"›";position:absolute;left:6px;color:var(--orange);font-family:var(--mono)}
+
+  /* CODE / TERMINAL */
+  .codeblock{
+    position:relative;margin:20px 0;border:1px solid var(--line);border-radius:12px;
+    background:var(--bg-3);overflow:hidden;
+  }
+  .codebar{
+    display:flex;justify-content:space-between;align-items:center;gap:12px;
+    padding:9px 14px;border-bottom:1px solid var(--line);
+    font-family:var(--mono);font-size:11.5px;letter-spacing:.1em;color:var(--ink-dim);
+    text-transform:uppercase;background:rgba(255,255,255,.02)
+  }
+  .copy-btn{
+    font-family:var(--mono);font-size:11.5px;letter-spacing:.08em;cursor:pointer;
+    background:var(--orange);color:#1A192C;border:0;border-radius:7px;padding:6px 14px;
+    font-weight:600;transition:transform .08s ease, background .15s;
+  }
+  .copy-btn:hover{background:#ffb42a}
+  .copy-btn:active{transform:scale(.96)}
+  .copy-btn.done{background:var(--green)}
+  pre{
+    padding:18px 18px 20px;overflow-x:auto;font-family:var(--mono);
+    font-size:13.5px;line-height:1.7;color:#DCD8EE;white-space:pre-wrap;word-break:break-word;
+  }
+  .term pre{white-space:pre;word-break:normal}
+  .t-pass{color:var(--green)}
+  .t-fail{color:var(--red)}
+  .t-warn{color:var(--yellow)}
+  .t-dim{color:#6E6990}
+  .t-orange{color:var(--orange)}
+
+  /* CALLOUTS */
+  .warn{
+    display:flex;gap:14px;margin:22px 0;padding:16px 18px;border-radius:12px;
+    background:rgba(248,113,113,.07);border:1px solid rgba(248,113,113,.3);
+  }
+  .warn .ico{font-size:20px;line-height:1.4}
+  .warn p{margin:0;color:var(--ink)}
+  .note{
+    margin:22px 0;padding:16px 18px;border-radius:12px;
+    background:var(--orange-soft);border:1px solid rgba(243,159,6,.3);
+  }
+  .note p{margin:0;color:var(--ink)}
+
+  /* TIMELINE */
+  .flow{margin:26px 0;display:grid;gap:0}
+  .flow-item{
+    display:grid;grid-template-columns:56px 1fr;gap:16px;padding:16px 0;
+    border-top:1px dashed var(--line)
+  }
+  .flow-item:last-child{border-bottom:1px dashed var(--line)}
+  .flow-num{
+    font-family:var(--mono);font-size:13px;color:var(--orange);
+    border:1px solid var(--line);border-radius:10px;height:40px;width:56px;
+    display:flex;align-items:center;justify-content:center;background:rgba(255,255,255,.02)
+  }
+  .flow-item h4{font-family:var(--disp);font-size:16.5px;font-weight:650;margin-bottom:3px}
+  .flow-item p{margin:0;font-size:15.5px}
+  .decyzja{
+    display:inline-block;margin-left:8px;font-family:var(--mono);font-size:10px;letter-spacing:.1em;
+    color:var(--orange);border:1px solid rgba(243,159,6,.45);border-radius:999px;padding:2px 8px;
+    background:var(--orange-soft);vertical-align:middle;text-transform:uppercase;
+  }
+
+  /* TABELA PRZED/PO */
+  .tabela-wrap{overflow-x:auto;margin:22px 0;border:1px solid var(--line);border-radius:12px}
+  table{border-collapse:collapse;width:100%;min-width:560px;font-size:15px}
+  thead th{
+    font-family:var(--mono);font-size:11.5px;letter-spacing:.1em;text-transform:uppercase;
+    color:var(--ink-dim);text-align:left;padding:12px 16px;border-bottom:1px solid var(--line);
+    background:rgba(255,255,255,.02);font-weight:600;
+  }
+  tbody td{padding:12px 16px;border-top:1px dashed var(--line);color:var(--ink-dim);vertical-align:top}
+  tbody td:first-child{color:var(--ink)}
+  tbody td.stan{font-family:var(--mono);font-size:12.5px;white-space:nowrap}
+
+  /* AKORDEONY */
+  .droga{
+    border:1px solid var(--line);border-radius:14px;background:var(--bg-2);
+    margin:14px 0;overflow:hidden;
+  }
+  .droga.pick{border-color:rgba(243,159,6,.5)}
+  .droga summary{
+    cursor:pointer;list-style:none;display:flex;align-items:center;gap:14px;flex-wrap:wrap;
+    padding:18px 20px;font-family:var(--disp);font-weight:650;font-size:17.5px;
+    user-select:none;transition:background .15s;
+  }
+  .droga summary::-webkit-details-marker{display:none}
+  .droga summary:hover{background:rgba(255,255,255,.03)}
+  .droga summary::after{
+    content:"+";margin-left:auto;font-family:var(--mono);font-size:20px;color:var(--orange);
+    transition:transform .2s;flex-shrink:0;
+  }
+  .droga[open] summary::after{transform:rotate(45deg)}
+  .droga .d-num{
+    font-family:var(--mono);font-size:12.5px;color:var(--orange);
+    border:1px solid var(--line);border-radius:8px;padding:4px 10px;background:rgba(255,255,255,.02);
+    flex-shrink:0;
+  }
+  .droga .d-body{padding:4px 20px 20px;border-top:1px dashed var(--line)}
+
+  /* HERO ACTIONS */
+  .hero-actions{display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-top:26px}
+  .md-btn{font-size:13px;padding:11px 18px;border-radius:10px}
+  .md-hint{font-size:13.5px;color:var(--ink-dim);max-width:420px}
+
+  /* CTA */
+  .cta-line{
+    margin-top:22px;padding:12px 16px;border:1px dashed rgba(243,159,6,.4);border-radius:12px;
+    font-size:14.5px;color:var(--ink-dim);background:rgba(243,159,6,.05);max-width:640px;
+  }
+  .code-pill{
+    font-family:var(--mono);font-size:12.5px;font-weight:600;color:var(--orange);
+    background:rgba(243,159,6,.1);border:1px solid rgba(243,159,6,.35);
+    border-radius:6px;padding:2px 8px;letter-spacing:.06em;
+  }
+  .cta-box{
+    display:flex;align-items:center;justify-content:space-between;gap:26px;flex-wrap:wrap;
+    border:1px solid rgba(243,159,6,.4);border-radius:16px;padding:26px 28px;
+    background:linear-gradient(135deg, rgba(243,159,6,.09), rgba(243,159,6,.02) 60%);
+  }
+  .cta-box p{font-size:15px;max-width:560px}
+  .cta-btn{
+    flex-shrink:0;font-family:var(--disp);font-weight:650;font-size:16px;
+    background:var(--orange);color:#1A192C;border-radius:12px;padding:14px 26px;
+    border-bottom:none;transition:background .15s, transform .08s;
+  }
+  .cta-btn:hover{background:#ffb42a}
+  .cta-btn:active{transform:scale(.97)}
+
+  /* FOOTER */
+  footer{padding:48px 0 64px}
+  footer h2{font-size:clamp(20px,2.6vw,26px);margin-bottom:14px}
+  footer .links{display:flex;flex-wrap:wrap;gap:18px;margin-bottom:22px;font-size:15px}
+  footer p{font-size:13.5px;color:var(--ink-dim)}
+
+  @media (max-width:560px){
+    header{padding:52px 0 34px}
+    section{padding:44px 0}
+    .flow-item{grid-template-columns:44px 1fr;gap:12px}
+    .flow-num{width:44px;height:36px}
+  }
+</style>
+</head>
+<body>
+
+<header id="hero">
+  <div class="wrap">
+    <div class="kicker">Poradnik po odcinku</div>
+    <h1>Agent AI na Twoim serwerze.<br><em>Widoczny tylko dla Ciebie.</em></h1>
+    <p class="lede"><strong>Nod</strong> to open-source'owy agent AI od n8n Labs z własnym "komputerem":
+    Linuksem do pracy i przeglądarką, w kontenerach Docker. Robi zadania, pamięta, ma harmonogramy
+    i pyta o zgodę przed akcją, o którą nie prosiłeś. Stawiasz go <strong>u siebie</strong>, nie w cudzej
+    chmurze - a po drodze czeka kilkanaście pułapek, których nie ma w dokumentacji.</p>
+    <p class="lede" style="margin-top:14px">Zamiast wykładu dostajesz <strong>jedną wklejkę do Claude
+    Code</strong>. Agent sprawdza serwer, buduje Noda w przetestowanej wersji, wystawia go tylko w Twojej
+    prywatnej sieci Tailscale i sprawdza w bazie, czy wszystko się zapisało. Ty logujesz się w przeglądarce
+    i klikasz tam, gdzie Ci powie.</p>
+    <div class="hero-meta">
+      <span class="chip">⏱ ok. 40 minut</span>
+      <span class="chip">🧑‍💻 zero programowania</span>
+      <span class="chip"><b>9 faz</b> robi agent</span>
+      <span class="chip">📌 przetestowane: nod-v0.8.0</span>
+    </div>
+    <div class="hero-actions">
+      <button class="copy-btn md-btn" data-copy="cb-prompt">📋 Kopiuj prompt dla agenta</button>
+      <span class="md-hint">Nie chcesz czytać? Zjedź do Kroku 2, skopiuj prompt i wklej go w Claude Code.</span>
+    </div>
+    <div class="cta-line">
+      Nie masz jeszcze serwera? Ja korzystam z VPS-ów od <a href="https://hostinger.com/roberthost">Hostingera</a>
+      (partner technologiczny kanału) - kod <span class="code-pill">ROBERTHOST</span> daje dodatkowy rabat.
+    </div>
+  </div>
+</header>
+
+<section id="zanim">
+  <div class="wrap">
+    <div class="step-tag">ZANIM ZACZNIESZ</div>
+    <h2>Czego potrzebujesz</h2>
+    <ul class="plain">
+      <li><strong>VPS z Linuksem AMD64 albo ARM64: 2 rdzenie, 8 GB RAM, najlepiej 50 GB dysku.</strong>
+      Tyle podaje dokumentacja Noda. Limity jego kontenerów to razem ok. 7 GB plus baza, więc na serwerze,
+      na którym stoi już coś ciężkiego, agent pokaże Ci sumę i ostrzeże.</li>
+      <li><strong>Docker Engine 25+, Compose v2, Buildx, Git, OpenSSL.</strong> Brakuje? Agent za Twoją
+      zgodą doinstaluje Dockera z oficjalnego repozytorium.</li>
+      <li><strong>Serwer po vps-security i tailscale-vps.</strong> Nod wychodzi do Ciebie wyłącznie przez
+      Tailscale, więc serwer i Twój komputer muszą być w jednym tailnecie. W konsoli Tailscale włącz
+      MagicDNS i HTTPS Certificates.</li>
+      <li><strong>Model:</strong> subskrypcja <strong>ChatGPT Plus albo Pro</strong> albo <strong>klucz
+      API</strong>. Claude i Gemini działają w Nodzie tylko z kluczem API - ich subskrypcje nie.</li>
+      <li><strong>Claude Code na Twoim komputerze.</strong> Agent działa lokalnie i łączy się z serwerem
+      po SSH. Na serwerze ląduje tylko Nod i trzy małe skrypty z tego repo.</li>
+    </ul>
+    <div class="warn">
+      <span class="ico">⚠️</span>
+      <p><strong>Złota zasada:</strong> najpierw onboarding w <strong>przeglądarce</strong>, dopiero potem
+      aplikacja na komputer. Aplikacja połączona z serwerem potrafi na koniec onboardingu pokazać
+      "Setup needs another try" - wygląda jak porażka, a serwer zapisał wszystko poprawnie. Wizard omija
+      to kolejnością.</p>
+    </div>
+    <div class="note">
+      <p><strong>Krok zero.</strong> Ten poradnik nie robi hardeningu i nie instaluje Tailscale. Najpierw
+      <a href="https://szewowsky.github.io/vps-security/">vps-security</a> (zabezpieczenie serwera), potem
+      <a href="https://szewowsky.github.io/tailscale-vps/">tailscale-vps</a> (serwer w prywatnej sieci),
+      dopiero potem Nod. Każdy z nich to też jedna wklejka.</p>
+    </div>
+    <div class="note">
+      <p><strong>Zakres.</strong> Dostęp wyłącznie przez Tailscale Serve. Własna domena z reverse proxy
+      i tunel SSH - jeszcze nie obsługiwane. Instalacja na Macu w domu - poza zakresem.</p>
+    </div>
+  </div>
+</section>
+
+<section id="jak-dziala">
+  <div class="wrap">
+    <div class="step-tag">O CO CHODZI</div>
+    <h2>Trzy rzeczy, które warto wiedzieć o Nodzie</h2>
+    <div class="flow">
+      <div class="flow-item">
+        <div class="flow-num">1</div>
+        <div><h4>To osobny program, nie część n8n</h4>
+        <p>Najczęstsze nieporozumienie. Nod nie jest dodatkiem do n8n i n8n nie jest mu potrzebne.
+        Może się do Twojego n8n podłączyć przez MCP i budować tam workflowy - ale to opcja.</p></div>
+      </div>
+      <div class="flow-item">
+        <div class="flow-num">2</div>
+        <div><h4>"Własny komputer" to kontenery Docker</h4>
+        <p>Nie maszyna wirtualna. Sześć kontenerów: serwer, baza Postgres, workspace (Linux do pracy),
+        przeglądarka Chromium, firewall workspace i pośrednik do Dockera. Budujesz je ze źródeł, bo
+        publicznego gotowego obrazu serwera nie ma.</p></div>
+      </div>
+      <div class="flow-item">
+        <div class="flow-num">3</div>
+        <div><h4>Wchodzisz przez Tailscale Serve</h4>
+        <p>Nod słucha tylko na <code class="inline">127.0.0.1:4310</code>. Tailscale wystawia go pod
+        <code class="inline">https://&lt;serwer&gt;.&lt;tailnet&gt;.ts.net:4310</code> z prawdziwym
+        certyfikatem, tylko dla Twoich urządzeń. Bez domeny, bez otwierania portów, bez ruszania
+        istniejącego proxy.</p></div>
+      </div>
+    </div>
+    <p>Nod jest w fazie <strong>research preview</strong>: wydania wychodzą co kilka dni, czasem kilka
+    jednego dnia. Dlatego ten poradnik przypina wersję, którą sprawdził, a nie "zawsze najnowszą".</p>
+  </div>
+</section>
+
+<section id="krok-1">
+  <div class="wrap">
+    <div class="step-tag">KROK 1 / 3</div>
+    <h2>Otwórz Claude Code w pustym folderze</h2>
+    <p>Nowy folder, żeby agent miał czyste biurko. Wpisz w terminalu na <strong>swoim komputerze</strong>
+    (nie na serwerze):</p>
+    <div class="codeblock">
+      <div class="codebar"><span>Twój komputer · terminal</span><button class="copy-btn" data-copy="cb1">Kopiuj</button></div>
+      <pre id="cb1">mkdir nod-vps && cd nod-vps && claude</pre>
+    </div>
+    <div class="note">
+      <p><strong>Pracujesz w aplikacji desktopowej Claude Code?</strong> Terminal nie jest Ci potrzebny:
+      utwórz pusty folder, otwórz go w apce jako nową sesję lokalną i przejdź do Kroku 2.</p>
+    </div>
+  </div>
+</section>
+
+<section id="krok-2">
+  <div class="wrap">
+    <div class="step-tag">KROK 2 / 3</div>
+    <h2>Wklej agentowi ten prompt</h2>
+    <p>Cały, w jednej wiadomości. Agent sklonuje repo z wizardem, zapyta o serwer, model i prywatność
+    i poprowadzi Cię fazami F0-F8.</p>
+    <div class="codeblock">
+      <div class="codebar"><span>Claude Code · wiadomość do agenta</span><button class="copy-btn" data-copy="cb-prompt">Kopiuj prompt</button></div>
+      <pre id="cb-prompt">Sklonuj repozytorium https://github.com/Szewowsky/nod-vps.git do bieżącego katalogu,
+przeczytaj plik .claude/commands/nod-setup.md i przeprowadź mnie przez opisany tam wizard
+instalacji Noda (agenta AI od n8n) na moim VPS - dokładnie według jego zasad i kolejności
+faz od F0 do F8. Idź krok po kroku: czekaj na wynik każdej komendy i nie przechodź dalej,
+jeśli test fazy nie przeszedł. Zacznij od zebrania danych (Faza 0), potem audyt PRZED przez
+scripts/check.sh --before, kod Noda w przetestowanej wersji z scripts/versions.env, build,
+dostęp wyłącznie przez Tailscale Serve, onboarding w przeglądarce, a na końcu backup przez
+scripts/backup.sh, audyt PO i zestawienie: co było na czerwono, a co jest teraz na zielono.
+Złota zasada: najpierw onboarding w przeglądarce, dopiero potem aplikacja na komputer.
+Mój serwer przeszedł już vps-security i tailscale-vps, więc NIE zmieniaj konfiguracji SSH
+ani firewalla, nie otwieraj żadnych publicznych portów i nigdy nie używaj tailscale funnel.
+Komendy z sudo buduj heredokiem zapisywanym do pliku i uruchamianym przez ssh. Nigdy nie
+wklejaj do czatu zawartości pliku .env ani tokenu - token skopiuj mi do schowka. Logowania
+(onboarding, ChatGPT, klucz API) robię sam w przeglądarce - Ty mi mówisz, gdzie kliknąć.</pre>
+    </div>
+    <div class="note">
+      <p><strong>Chcesz najnowszą wersję Noda zamiast przetestowanej?</strong> Dopisz na końcu promptu:
+      <code class="inline">Użyj najnowszego tagu (--latest).</code> Agent uprzedzi, że ta wersja nie była
+      sprawdzana w tym poradniku.</p>
+    </div>
+    <div class="note">
+      <p><strong>Masz Codex zamiast Claude Code?</strong> Ten sam prompt działa - Codex czyta
+      <code class="inline">AGENTS.md</code> z repo, który wskazuje na ten sam wizard.</p>
+    </div>
+  </div>
+</section>
+
+<section id="krok-3">
+  <div class="wrap">
+    <div class="step-tag">KROK 3 / 3</div>
+    <h2>Co się będzie działo (i gdzie masz coś do powiedzenia)</h2>
+    <p>Dziewięć faz. Agent robi komendy, Ty klikasz tam, gdzie jest znaczek
+    <span class="decyzja">Twój klik</span>.</p>
+    <div class="flow">
+      <div class="flow-item">
+        <div class="flow-num">F0</div>
+        <div><h4>Dane i decyzje <span class="decyzja">Twój klik</span></h4>
+        <p>Adres SSH (po tailscale-vps to adres z tailnetu), użytkownik, port, publiczny IP do testu
+        negatywnego, czy przeszedłeś oba poprzednie poradniki, ChatGPT czy klucz API, aplikacja desktopowa,
+        prywatność, katalog backupu i wersja: przetestowana albo najnowsza.</p></div>
+      </div>
+      <div class="flow-item">
+        <div class="flow-num">F1</div>
+        <div><h4>Audyt PRZED</h4>
+        <p><code class="inline">check.sh --before</code>: architektura, CPU, RAM, dysk, Docker 25+, Compose,
+        Buildx, Tailscale, HTTPS Certificates, port 4310, inne kontenery. Brakuje Dockera albo Buildx? Za
+        Twoją zgodą instalacja z oficjalnego repozytorium.</p></div>
+      </div>
+      <div class="flow-item">
+        <div class="flow-num">F2</div>
+        <div><h4>Kod w przypiętej wersji</h4>
+        <p><code class="inline">git clone --branch nod-v0.8.0 --depth 1</code>. Tag bierze z
+        <code class="inline">scripts/versions.env</code>, chyba że wybrałeś najnowszy.</p></div>
+      </div>
+      <div class="flow-item">
+        <div class="flow-num">F3</div>
+        <div><h4>Konfiguracja</h4>
+        <p><code class="inline">setup.sh</code> Noda generuje trzy sekrety, agent ustawia adres z tailnetu
+        w <code class="inline">NOD_PUBLIC_URL</code>. Sprawdza prawa 600 i długości sekretów - samych
+        wartości nie pokazuje.</p></div>
+      </div>
+      <div class="flow-item">
+        <div class="flow-num">F4</div>
+        <div><h4>Build i start</h4>
+        <p>Ten długi moment: ok. 7 minut na 4 vCPU, ok. 5 GB obrazów. Build idzie w tle na serwerze, agent
+        sprawdza co minutę. Na koniec 6 kontenerów, kluczowe w stanie healthy.</p></div>
+      </div>
+      <div class="flow-item">
+        <div class="flow-num">F5</div>
+        <div><h4>Dostęp przez Tailscale Serve <span class="decyzja">Twój klik</span></h4>
+        <p>Jedna komenda i cztery testy z Twojego komputera: strona 200, bez tokenu 401, zły token 401,
+        publiczny IP na porcie 4310 milczy. Token ląduje w Twoim schowku, nie w czacie.</p></div>
+      </div>
+      <div class="flow-item">
+        <div class="flow-num">F6</div>
+        <div><h4>Onboarding i model w przeglądarce <span class="decyzja">Twój klik</span></h4>
+        <p>Dane użycia wyłączone, e-mail pusty, model podłączony i <strong>ręcznie przełączony</strong>.
+        Potem agent czyta stan z bazy: czy onboarding się zapisał i czy na pewno płacisz za ten model,
+        za który chcesz.</p></div>
+      </div>
+      <div class="flow-item">
+        <div class="flow-num">F7</div>
+        <div><h4>Aplikacja, n8n, Composio (opcjonalnie) <span class="decyzja">Twój klik</span></h4>
+        <p>Aplikacja desktopowa dopiero teraz, przez "Connect to a server". n8n adresem HTTPS, nie
+        <code class="inline">localhost</code>. Composio z uczciwym "może nie działać".</p></div>
+      </div>
+      <div class="flow-item">
+        <div class="flow-num">F8</div>
+        <div><h4>Backup, audyt PO i zestawienie</h4>
+        <p>Kopia z plikiem <code class="inline">complete</code> i prawami 700, potem
+        <code class="inline">check.sh --after</code> bez FAIL i tabela "było / jest".</p></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="werdykt">
+  <div class="wrap">
+    <div class="step-tag">CZERWONE MA BYĆ ZIELONE</div>
+    <h2>Audyt po instalacji</h2>
+    <p>Skrót tego, co pokaże <code class="inline">check.sh --after</code> na serwerze (przykład,
+    z placeholderami zamiast prawdziwych nazw):</p>
+    <div class="codeblock term">
+      <div class="codebar"><span>PO · bash check.sh --after</span></div>
+      <pre><span class="t-dim">━━━ 5. Instalacja Noda ━━━</span>
+<span class="t-pass">  [PASS]</span>  Kod Noda: tag nod-v0.8.0
+<span class="t-pass">  [PASS]</span>  .env ma prawa 600
+<span class="t-pass">  [PASS]</span>  NOD_AUTH_TOKEN ustawiony (wartości nie pokazuję)
+<span class="t-pass">  [PASS]</span>  Kontenery Noda działają: 6
+<span class="t-dim">━━━ 6. Dostęp (Tailscale Serve) ━━━</span>
+<span class="t-pass">  [PASS]</span>  tailscale serve: https :4310 -> http://127.0.0.1:4310
+<span class="t-pass">  [PASS]</span>  /api/session bez tokenu: 401
+<span class="t-dim">━━━ 7. Stan Noda z bazy (bez sekretów) ━━━</span>
+<span class="t-pass">  [PASS]</span>  Onboarding ukończony (zapisany na serwerze)
+<span class="t-pass">  [PASS]</span>  Udostępnianie danych użycia wyłączone
+<span class="t-dim">━━━ 8. Backup i wersja ━━━</span>
+<span class="t-pass">  [PASS]</span>  Backup z plikiem complete: ~/backups/nod/&lt;data&gt;_po-konfiguracji
+<span class="t-warn">  [WARN]</span>  Jest nowsza wersja: nod-vX.Y.Z - aktualizacja ręcznie z backupem</pre>
+    </div>
+    <div class="tabela-wrap">
+      <table>
+        <thead><tr><th>Co</th><th>Przed</th><th>Po</th></tr></thead>
+        <tbody>
+          <tr><td>Nod na serwerze</td><td class="stan t-fail">brak</td><td class="stan t-pass">6 kontenerów, healthy</td></tr>
+          <tr><td>Adres</td><td class="stan">-</td><td class="stan t-pass">&lt;serwer&gt;.&lt;tailnet&gt;.ts.net:4310</td></tr>
+          <tr><td>Port 4310 z internetu</td><td class="stan">-</td><td class="stan t-pass">nie odpowiada</td></tr>
+          <tr><td>Wejście bez tokenu</td><td class="stan">-</td><td class="stan t-pass">401</td></tr>
+          <tr><td>Dane użycia</td><td class="stan t-warn">bywają domyślnie włączone</td><td class="stan t-pass">wyłączone (z bazy)</td></tr>
+          <tr><td>Wybrany model</td><td class="stan t-warn">zostaje pierwszy podłączony</td><td class="stan t-pass">zgodny z Twoją decyzją</td></tr>
+          <tr><td>Token w czacie z AI</td><td class="stan">-</td><td class="stan t-pass">nigdy, tylko schowek</td></tr>
+          <tr><td>Backup</td><td class="stan t-fail">brak</td><td class="stan t-pass">jest, prawa 700</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <h3>Wersja: przypięta, nie "zawsze najnowsza"</h3>
+    <p>Ostatni przetestowany tag siedzi w jednym pliku, <code class="inline">scripts/versions.env</code>,
+    a <code class="inline">CHANGELOG.md</code> mówi uczciwie, co na nim sprawdzono, a czego nie.
+    <code class="inline">check.sh</code> ostrzega, gdy Twoja wersja różni się od przetestowanej albo gdy
+    wyszła nowsza. Aktualizacja to świadoma, ręczna ścieżka: backup, stop, pobranie jednego tagu, build,
+    audyt - opisana w <code class="inline">INSTRUKCJA.md</code>. Migracje bazy idą tylko do przodu, więc
+    backup przed aktualizacją jest Twoją jedyną drogą powrotu.</p>
+  </div>
+</section>
+
+<section id="potkniecia">
+  <div class="wrap">
+    <div class="step-tag">ZJEDZONE ZA CIEBIE</div>
+    <h2>Pułapki, które wizard już zna</h2>
+
+    <details class="droga pick">
+      <summary><span class="d-num">1</span>"Setup needs another try. These settings are not supported."</summary>
+      <div class="d-body">
+        <p>Ekran na koniec onboardingu w aplikacji desktopowej połączonej z serwerem. "Try again" nic nie
+        zmienia. Serwer zapisał onboarding poprawnie, w przeglądarce wszystko działa - aplikacja odrzuca
+        jedno pole we własnych ustawieniach. Dlatego wizard robi onboarding w przeglądarce, a aplikację
+        podłącza dopiero potem: przy ukończonym onboardingu wchodzi prosto do rozmowy.</p>
+      </div>
+    </details>
+
+    <details class="droga">
+      <summary><span class="d-num">2</span>Logowanie ChatGPT kończy się stroną z błędem</summary>
+      <div class="d-body">
+        <p>OpenAI odsyła przeglądarkę na <code class="inline">127.0.0.1:1455</code>, czyli na Twój
+        komputer, a Nod siedzi na serwerze. To normalne. Skopiuj cały adres z paska, w Nodzie rozwiń
+        <strong>zwiniętą</strong> linię "Browser didn't return to Nod?", wklej, "Complete sign-in". Masz
+        10 minut, a każde nowe "Sign in with ChatGPT" unieważnia stary adres.</p>
+      </div>
+    </details>
+
+    <details class="droga">
+      <summary><span class="d-num">3</span>Podłączyłeś ChatGPT, a płacisz z klucza API</summary>
+      <div class="d-body">
+        <p>Nowe połączenie nie przełącza wybranego modelu - zostaje ten, który był pierwszy. Wizard każe
+        przełączyć go ręcznie i sprawdza w bazie, który model naprawdę odpowiada. Od 0.8.0 jest też osobny
+        model do harmonogramów i pracy własnej Noda.</p>
+      </div>
+    </details>
+
+    <details class="droga">
+      <summary><span class="d-num">4</span>Aplikacja "sama się połączyła"</summary>
+      <div class="d-body">
+        <p>Po instalacji aplikacja startuje jako lokalny asystent na Twoim komputerze i nie pyta o serwer.
+        Model i aplikacje podłączone w tym trybie zostają na komputerze. Test: w ustawieniach aplikacji
+        nie ma <code class="inline">serverUrl</code>.</p>
+      </div>
+    </details>
+
+    <details class="droga">
+      <summary><span class="d-num">5</span>"Share usage data" włączone mimo wyłączonej analityki</summary>
+      <div class="d-body">
+        <p><code class="inline">NOD_ANALYTICS_ENABLED=false</code> w konfiguracji to nie to samo co
+        przełącznik w onboardingu. Wyłącz go, zostaw pusty e-mail. Wizard sprawdza ten stan w bazie.</p>
+      </div>
+    </details>
+
+    <details class="droga">
+      <summary><span class="d-num">6</span>Tunel SSH z dokumentacji daje 403</summary>
+      <div class="d-body">
+        <p>Nod wpuszcza tylko żądania z adresem z <code class="inline">NOD_PUBLIC_URL</code>. Po ustawieniu
+        adresu tailnetu wejście przez <code class="inline">localhost:4310</code> kończy się "This host is
+        not permitted". Jeden sposób wejścia naraz - tu Tailscale.</p>
+      </div>
+    </details>
+
+    <details class="droga">
+      <summary><span class="d-num">7</span>Dokumentacja obiecuje gotową paczkę, której nie pobierzesz</summary>
+      <div class="d-body">
+        <p>"Prebuilt bundle" serwera jest w prywatnych wydaniach. Publiczne wydania to aplikacje desktopowe.
+        Wizard buduje ze źródeł i wcześniej sprawdza Buildx - bez niego build pada z
+        <code class="inline">the --chmod option requires BuildKit</code>.</p>
+      </div>
+    </details>
+
+    <details class="droga">
+      <summary><span class="d-num">8</span>Ekran mówi błąd, a w logach pusto</summary>
+      <div class="d-body">
+        <p>Komunikat Noda nie zawsze zgadza się ze stanem serwera, a serwer loguje prawie nic.
+        <code class="inline">nod-state.sh</code> czyta stan z bazy: onboarding, dane użycia, połączenia
+        modeli, wybrany model, tury. Bez kluczy i bez treści rozmów.</p>
+      </div>
+    </details>
+
+    <details class="droga">
+      <summary><span class="d-num">9</span>n8n podany jako <code class="inline">localhost</code></summary>
+      <div class="d-body">
+        <p>W Nodzie <code class="inline">localhost</code> to kontener Noda, nie Twój serwer. n8n
+        podłączasz przez Instance-level MCP adresem HTTPS.</p>
+      </div>
+    </details>
+
+    <details class="droga">
+      <summary><span class="d-num">10</span>Composio (Gmail, Kalendarz) na self-hoście</summary>
+      <div class="d-body">
+        <p>Połączenia idą przez pośrednika hostowanego przez n8n, a własnego klucza nie podasz. Na
+        self-hoście zgłaszano błąd <code class="inline">429 public_budget_exceeded</code>; zgłoszenie
+        zamknięto poprawą komunikatu, ale czy limit zniknął - nie sprawdziliśmy. Uczciwie: może nie
+        działać. Bez Composio działają przeglądarka, workspace, Telegram, n8n, Notion i Linear.</p>
+      </div>
+    </details>
+
+    <details class="droga">
+      <summary><span class="d-num">11</span>Backup, który zatrzymuje Noda i trzyma sekrety</summary>
+      <div class="d-body">
+        <p>Oficjalny backup na kilkanaście sekund zatrzymuje serwer, wymaga ścieżki bezwzględnej
+        i nieistniejącego katalogu, a kopia zawiera token i klucz sejfu. Bez klucza sejfu baza nie odtworzy
+        zapisanych dostępów. <code class="inline">backup.sh</code> z tego repo pilnuje ścieżki, ustawia
+        prawa 700 i mówi, gdzie kopii nie trzymać.</p>
+      </div>
+    </details>
+
+    <details class="droga">
+      <summary><span class="d-num">12</span>Agent mówi "BLOCKED: sudo is not allowed"</summary>
+      <div class="d-body">
+        <p>Bash-guard w Claude Code blokuje <code class="inline">sudo</code> w komendzie inline, nawet
+        zdalnej. Wizard buduje takie kroki heredokiem do pliku, kopiuje przez scp i uruchamia na serwerze.
+        A jeśli <code class="inline">ssh</code> wisi z linkiem Tailscale - to Tailscale SSH prosi
+        o potwierdzenie, kliknij.</p>
+      </div>
+    </details>
+  </div>
+</section>
+
+<section id="ryzyka">
+  <div class="wrap">
+    <div class="step-tag">UCZCIWIE</div>
+    <h2>Czego ten poradnik nie załatwia</h2>
+    <ul class="plain">
+      <li><strong>Jeden token = pełny dostęp</strong> do agenta i wszystkich podpiętych kont. Nie ma kont
+      użytkowników ani 2FA. Dlatego Nod stoi tylko w Twoim tailnecie, a token nigdy nie trafia do czatu.</li>
+      <li><strong>Socket Dockera.</strong> Kontener <code class="inline">runtime</code> ma do niego dostęp
+      przez filtrujący pośrednik. Błąd w pośredniku to potencjalnie pełna kontrola nad serwerem.</li>
+      <li><strong>Research preview.</strong> Częste wydania, dokumentacja miejscami nie nadąża. Testuj na
+      świeżym VPS, zanim ruszysz serwer z innymi usługami.</li>
+      <li><strong>Większe zadania na małym VPS.</strong> W repo Noda jest zgłoszenie o padającym workspace
+      przy większych zadaniach na VPS - nie sprawdzaliśmy go.</li>
+      <li><strong>Kontrola zaufania to osąd modelu.</strong> Zanim Nod zrobi coś, o co nie prosiłeś, pyta -
+      ale o tym, co jest "akcją, o którą nie prosiłeś", decyduje model. Autorzy zalecają mocny model.</li>
+    </ul>
+  </div>
+</section>
+
+<section id="cta" style="border-bottom:0">
+  <div class="wrap">
+    <div class="cta-box">
+      <div>
+        <h3 style="margin-top:0">Nie masz jeszcze VPS-a?</h3>
+        <p style="margin-bottom:0">Nod potrzebuje 8 GB RAM, więc mały serwer nie wystarczy. Ja swoje trzymam
+        u Hostingera - to partner technologiczny kanału, więc z kodem <span class="code-pill">ROBERTHOST</span>
+        dostajesz dodatkowy rabat, a ja małą prowizję. Sprzęt bez zmian, cena niższa.</p>
+      </div>
+      <a class="cta-btn" href="https://hostinger.com/roberthost">Postaw serwer →</a>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">
+    <h2>Materiały i licencje</h2>
+    <div class="links">
+      <a href="https://youtube.com/@robert_szewczyk">Odcinek na YouTube</a>
+      <a href="https://github.com/Szewowsky/nod-vps">Repo: wizard + skrypty</a>
+      <a href="https://szewowsky.github.io/vps-security/">Krok zero: zabezpiecz VPS</a>
+      <a href="https://szewowsky.github.io/tailscale-vps/">Krok pierwszy: schowaj VPS za Tailscale</a>
+      <a href="https://github.com/n8n-io/nod">Nod na GitHubie</a>
+      <a href="https://github.com/n8n-io/nod/releases">Wydania Noda</a>
+    </div>
+    <p>Materiał towarzyszący do odcinka o stawianiu Noda na własnym serwerze. Wizard i skrypty z tego
+    repozytorium są na licencji MIT - skrypty audytu i stanu tylko czytają, można je odpalać wielokrotnie.
+    Nod to projekt n8n Labs na licencji Apache 2.0 - ten poradnik nie jest z nim powiązany ani przez n8n
+    firmowany. Przetestowana wersja i to, czego nie sprawdzono: CHANGELOG.md w repo.</p>
+  </div>
+</footer>
+
+<script>
+  function fallbackCopy(text){
+    var ta = document.createElement('textarea');
+    ta.value = text;
+    ta.style.position = 'fixed';
+    ta.style.opacity = '0';
+    document.body.appendChild(ta);
+    ta.select();
+    var ok = false;
+    try { ok = document.execCommand('copy'); } catch(e) {}
+    document.body.removeChild(ta);
+    return ok;
+  }
+  document.querySelectorAll('.copy-btn').forEach(function(btn){
+    btn.addEventListener('click', function(){
+      var el = document.getElementById(btn.dataset.copy);
+      if (!el) return;
+      var text = el.innerText;
+      var mark = function(ok){
+        var old = btn.textContent;
+        btn.textContent = ok ? 'Skopiowane ✓' : 'Zaznacz i skopiuj ręcznie';
+        if (ok) btn.classList.add('done');
+        setTimeout(function(){ btn.textContent = old; btn.classList.remove('done'); }, 1800);
+      };
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text).then(function(){ mark(true); },
+          function(){ mark(fallbackCopy(text)); });
+      } else {
+        mark(fallbackCopy(text));
+      }
+    });
+  });
+</script>
+
+</body>
+</html>
